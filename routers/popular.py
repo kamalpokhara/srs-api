@@ -5,7 +5,7 @@ import pickle
 
 router = APIRouter()
 
-with open("../models/popular_products.pkl", "rb") as f:
+with open("models/popular_products.pkl", "rb") as f:
     popular_data = pickle.load(f)
 
 # Normalize to a sorted list regardless of how you stored it

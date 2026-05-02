@@ -8,7 +8,7 @@ router = APIRouter()
 
 # Load once at import time
 model = xgb.Booster()
-model.load_model("../models/final_xgb_churn_tuned.json")
+model.load_model("models/final_xgb_churn_tuned.json")
 
 FEATURE_ORDER = [
     "activity_span_days", "total_interactions", "unique_products",

@@ -7,10 +7,10 @@ import numpy as np
 router = APIRouter()
 
 # Load all three LightFM artifacts once
-with open("../models/lightfm_best.pkl", "rb") as f:
+with open("models/lightfm_best.pkl", "rb") as f:
     lfm_model = pickle.load(f)
 
-with open("../models/lightfm_dataset.pkl", "rb") as f:
+with open("models/lightfm_dataset.pkl", "rb") as f:
     dataset = pickle.load(f)
 
 # Build mappings from dataset
