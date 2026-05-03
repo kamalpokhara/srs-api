@@ -1,66 +1,97 @@
+# routers/recommendations.py
+
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from typing import List, Optional
-import pickle
+import joblib
 import numpy as np
 
 router = APIRouter()
 
-# Load all three LightFM artifacts once
-with open("models/lightfm_best.pkl", "rb") as f:
-    lfm_model = pickle.load(f)
+# ── LOAD ONCE AT STARTUP ──────────────────────────────────────────────────────
+lfm_model = joblib.load("models/lightfm_best.pkl")
+dataset   = joblib.load("models/lightfm_dataset.pkl")
 
-with open("models/lightfm_dataset.pkl", "rb") as f:
-    dataset = pickle.load(f)
-
-# Build mappings from dataset
+# Build mappings
 user_id_map, _, item_id_map, _ = dataset.mapping()
-item_id_reverse = {v: k for k, v in item_id_map.items()}  # internal_idx → product_id
-n_items = len(item_id_map)
+item_id_reverse = {v: k for k, v in item_id_map.items()}
+n_items         = len(item_id_map)
 
+print(f"RecSys loaded:")
+print(f"  Users:  {len(user_id_map)}")
+print(f"  Items:  {n_items}")
+print(f"  Sample user_ids: {list(user_id_map.keys())[:3]}")
+print(f"  Sample item_ids: {list(item_id_map.keys())[:3]}")
+
+# ── SCHEMAS ───────────────────────────────────────────────────────────────────
 class RecommendRequest(BaseModel):
-    user_id: str
-    top_n: int = 10
-    exclude_seen: Optional[List[str]] = []   # product_ids already interacted with
+    user_id:      str            # "U000324" format
+    top_n:        int = 10
+    exclude_seen: Optional[List[int]] = []  # product ids already seen
 
 class RecommendResponse(BaseModel):
-    user_id: str
-    recommendations: List[str]               # ordered list of product_ids
-    is_cold_start: bool
+    user_id:         str
+    recommendations: List[int]   # product ids as integers
+    is_cold_start:   bool
+    source:          str
 
+# ── ENDPOINT ──────────────────────────────────────────────────────────────────
 @router.post("/", response_model=RecommendResponse)
 def recommend(request: RecommendRequest):
     try:
+        # Check if user exists in training data
         is_cold_start = request.user_id not in user_id_map
 
         if is_cold_start:
-            # Fall back to popular products for unknown users
-            # Popular router handles this — return empty and let Django decide
+            # Unknown user — caller should fall back to popular
             return RecommendResponse(
                 user_id=request.user_id,
                 recommendations=[],
-                is_cold_start=True
+                is_cold_start=True,
+                source="cold_start",
             )
 
         internal_uid = user_id_map[request.user_id]
-        scores = lfm_model.predict(internal_uid, np.arange(n_items))
+        all_items    = np.arange(n_items)
+
+        # Predict — no user/item features needed
+        # embeddings are already baked into the model
+        scores = lfm_model.predict(
+            user_ids=int(internal_uid),
+            item_ids=all_items,
+            num_threads=1,
+        )
 
         # Exclude already seen items
-        seen_internal = {
-            item_id_map[pid]
-            for pid in request.exclude_seen
-            if pid in item_id_map
-        }
-        for idx in seen_internal:
-            scores[idx] = -np.inf
+        for pid in request.exclude_seen:
+            if pid in item_id_map:
+                scores[item_id_map[pid]] = -np.inf
 
+        # Get top N
         top_indices = np.argsort(-scores)[:request.top_n]
-        product_ids = [item_id_reverse[i] for i in top_indices]
+        product_ids = [
+            int(item_id_reverse[i])
+            for i in top_indices
+            if i in item_id_reverse
+        ]
 
         return RecommendResponse(
             user_id=request.user_id,
             recommendations=product_ids,
-            is_cold_start=False
+            is_cold_start=False,
+            source="personalized",
         )
+
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+# ── HELPER — for Django to call directly ──────────────────────────────────────
+@router.get("/user/{user_id}", response_model=RecommendResponse)
+def recommend_get(user_id: str, top_n: int = 10):
+    """GET endpoint for quick testing"""
+    return recommend(RecommendRequest(
+        user_id=user_id,
+        top_n=top_n,
+        exclude_seen=[],
+    ))
