@@ -1,0 +1,4 @@
+*.pkl binary
+*.json binary
+*.pt binary
+*.h5 binary
