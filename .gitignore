@@ -4,3 +4,5 @@ __pycache__/
 venv/
 test_api.py
 testmodel.py
+*.csv
+push_to_HF.py
