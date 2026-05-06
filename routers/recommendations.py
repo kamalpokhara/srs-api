@@ -5,12 +5,31 @@ from pydantic import BaseModel
 from typing import List, Optional
 import joblib
 import numpy as np
+import os
+from huggingface_hub import hf_hub_download
 
 router = APIRouter()
+# ── LOAD FROM HF HUB AT STARTUP ───────────────────────────────────────────────
+HF_REPO_ID = os.environ.get("HF_REPO_ID", "kamalpokhara/srs-models")
+HF_TOKEN   = os.environ.get("HF_TOKEN", None)
 
-# ── LOAD ONCE AT STARTUP ──────────────────────────────────────────────────────
-lfm_model = joblib.load("models/lightfm_best.pkl")
-dataset   = joblib.load("models/lightfm_dataset.pkl")
+print(f"Loading RecSys models from HF Hub: {HF_REPO_ID}")
+
+lfm_model_path = hf_hub_download(
+    repo_id   = HF_REPO_ID,
+    filename  = "lightfm_best.pkl",
+    token     = HF_TOKEN,
+    repo_type = "model"
+)
+dataset_path = hf_hub_download(
+    repo_id   = HF_REPO_ID,
+    filename  = "lightfm_dataset.pkl",
+    token     = HF_TOKEN,
+    repo_type = "model"
+)
+#  LOAD 
+lfm_model = joblib.load(lfm_model_path)
+dataset   = joblib.load(dataset_path)
 
 # Build mappings
 user_id_map, _, item_id_map, _ = dataset.mapping()

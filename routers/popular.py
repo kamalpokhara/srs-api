@@ -1,32 +1,38 @@
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from typing import List
-import joblib
+import pandas as pd
+import os
+from huggingface_hub import hf_hub_download
 
 router = APIRouter()
 
-# Load once at startup
-popular_data = joblib.load("models/popular_products.pkl")
+HF_REPO_ID = os.environ.get("HF_REPO_ID", "kamalpokhara/srs-models")
+HF_TOKEN   = os.environ.get("HF_TOKEN", None)
 
-# Normalize — handle both list and dict formats
-if isinstance(popular_data, dict):
-    popular_list = sorted(
-        popular_data.items(),
-        key=lambda x: x[1],
-        reverse=True
-    )
-    popular_ids = [int(k) for k, _ in popular_list]
+print(f"Loading Popular products from HF Hub: {HF_REPO_ID}")
 
-elif isinstance(popular_data, list):
-    # Could be list of ids or list of dicts
-    if len(popular_data) > 0 and isinstance(popular_data[0], dict):
-        popular_ids = [int(p["product_id"]) for p in popular_data]
-    else:
-        popular_ids = [int(p) for p in popular_data]
+popular_path = hf_hub_download(
+    repo_id   = HF_REPO_ID,
+    filename  = "popular_products.csv",
+    token     = HF_TOKEN,
+    repo_type = "model"
+)
+
+# Load and normalize — handle whatever column structure exists
+df = pd.read_csv(popular_path)
+
+if "product_id" in df.columns:
+    popular_ids = df["product_id"].astype(int).tolist()
+elif len(df.columns) == 1:
+    # Single column, no header or different name
+    popular_ids = df.iloc[:, 0].astype(int).tolist()
 else:
-    popular_ids = []
+    # Fallback — take first column
+    popular_ids = df.iloc[:, 0].astype(int).tolist()
 
 print(f"Popular products loaded — {len(popular_ids)} items")
+print(f"Top 5: {popular_ids[:5]}")
 
 class PopularResponse(BaseModel):
     product_ids: List[int]
