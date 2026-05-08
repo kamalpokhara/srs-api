@@ -40,7 +40,7 @@ class PopularResponse(BaseModel):
     source:      str = "popular"
 
 @router.get("/", response_model=PopularResponse)
-def get_popular(top_n: int = 20):
+def get_popular(top_n: int = 200):
     try:
         results = popular_ids[:top_n]
         return PopularResponse(
