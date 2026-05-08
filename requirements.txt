@@ -1,17 +1,38 @@
-# ML 
-numpy==1.23.5
-pandas==2.1.0          
-scikit-learn==1.3.0    
-scipy==1.15.3          
+#BUILD TOOLS (Crucial for Python 3.12)
+setuptools>=70.0.0
+wheel
+
+#CORE ML (Modernized for Render Stability)
+numpy==2.4.4
+pandas==3.0.2
+scikit-learn==1.8.0
+scipy==1.17.1
 xgboost==2.0.0
-lightfm==1.17
+lightfm-next==1.19.0
 
-# Extras (recsys)
-requests==2.33.1
-
-# API
-joblib==1.3.2
+#API & INTEGRATION
 fastapi==0.103.1
 uvicorn==0.22.0
-python-dotenv==1.0.0
-huggingface_hub 
+joblib==1.5.3
+huggingface_hub
+python-dotenv==1.2.2
+requests==2.33.1
+
+# old requiremnts- ML 
+#numpy==1.23.5
+#pandas==2.1.0          
+#scikit-learn==1.3.0    
+#scipy==1.15.3          
+#xgboost==2.0.0
+#lightfm==1.17
+#lightfm-next
+
+# Extras (recsys)
+#requests==2.33.1
+
+# API
+#joblib==1.3.2
+#fastapi==0.103.1
+#uvicorn==0.22.0
+#python-dotenv==1.0.0
+#huggingface_hub 
